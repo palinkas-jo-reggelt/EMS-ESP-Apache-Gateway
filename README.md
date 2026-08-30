@@ -181,9 +181,17 @@ while ($line = fgets(STDIN)) {
 
     RewriteRule ^/ems-esp-auth/ - [L]
 
+    # No cookie at all -> login, but only for non-LAN clients
+    RewriteCond %{REMOTE_ADDR} !^127\.0\.0\.1$
+    RewriteCond %{REMOTE_ADDR} !^::1$
+    RewriteCond %{REMOTE_ADDR} !^192\.168\.x\.
     RewriteCond %{HTTP_COOKIE} !PHPSESSID=([^;]+) [NC]
     RewriteRule ^ /ems-esp-auth/login.php [L,R=302]
 
+    # Cookie present but invalid/expired -> login, same LAN exemption
+    RewriteCond %{REMOTE_ADDR} !^127\.0\.0\.1$
+    RewriteCond %{REMOTE_ADDR} !^::1$
+    RewriteCond %{REMOTE_ADDR} !^192\.168\.x\.
     RewriteCond %{HTTP_COOKIE} PHPSESSID=([^;]+) [NC]
     RewriteCond ${session_check:%1} !^1$
     RewriteRule ^ /ems-esp-auth/login.php [L,R=302]
@@ -205,6 +213,7 @@ while ($line = fgets(STDIN)) {
 - **The `prg:` process is long-lived and does not restart on file save.** Any edit to `check_session.php` requires a full Apache **stop, then start** (not a graceful reload/restart) to take effect, since Apache doesn't respawn the external program on its own.
 - **Cookie domain scoping** — the login page must be served under the *same hostname* the proxy/rewrite rules live on. A cookie set on one subdomain is invisible to a different subdomain.
 - **Mobile viewport** — without `<meta name="viewport" content="width=device-width, initial-scale=1.0">`, mobile browsers render the login form at desktop scale and shrink it. Input font-size should stay ≥16px to avoid iOS auto-zoom on focus.
+- **Skipping auth entirely for LAN clients** — add `RewriteCond %{REMOTE_ADDR}` checks (negated, one per allowed range) ahead of each login-redirect rule. Since multiple conditions on one rule are ANDed by default, the redirect only fires when the client's IP matches none of the allowed ranges — LAN clients fall straight through to the proxy with no login step at all. This relies on `REMOTE_ADDR` being the real client IP as Apache sees it directly; if you ever put something like Cloudflare in front of this vhost, you'd need `mod_remoteip` (or similar) to preserve the real client address.
 
 ## Result
 
