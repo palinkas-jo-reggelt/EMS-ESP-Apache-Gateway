@@ -196,6 +196,7 @@ while ($line = fgets(STDIN)) {
     RewriteCond ${session_check:%1} !^1$
     RewriteRule ^ /ems-esp-auth/login.php [L,R=302]
 
+    # Proxy the address of the EMS-ESP device
     ProxyPreserveHost On
     ProxyPass /ems-esp-auth !
     ProxyPass /ws ws://192.168.x.x/ws
